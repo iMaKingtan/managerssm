@@ -24,11 +24,19 @@
 		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
 		http://www.springframework.org/schema/lang http://www.springframework.org/schema/lang/spring-lang-4.3.xsd
 		http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-4.3.xsd ">
-    <context:property-placeholder location="jdbc.properties"/>
-    <context:component-scan base-package="bean"/>
-    <context:component-scan base-package="dao"/>
-    <context:component-scan base-package="service"/>
-    <context:component-scan base-package="utils"/>
+    <context:property-placeholder location="classpath:jdbc.properties"/>
+    <context:component-scan base-package="bean">
+        <context:exclude-filter type="annotation" expression="org.springframework.stereotype.Controller"/>
+    </context:component-scan>
+    <context:component-scan base-package="dao">
+        <context:exclude-filter type="annotation" expression="org.springframework.stereotype.Controller"/>
+    </context:component-scan>
+    <context:component-scan base-package="service">
+        <context:exclude-filter type="annotation" expression="org.springframework.stereotype.Controller"/>
+    </context:component-scan>
+    <context:component-scan base-package="utils">
+        <context:exclude-filter type="annotation" expression="org.springframework.stereotype.Controller"/>
+    </context:component-scan>
     <bean id="pooledDataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource">
         <property name="jdbcUrl" value="${url}"/>
         <property name="user" value="${user}"/>
@@ -36,6 +44,28 @@
         <property name="driverClass" value="${driver}"/>
     </bean>
     <bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
-
+        <property name="configLocation" value="classpath:mybatis-conf.xml"/>
+        <property name="dataSource" ref="pooledDataSource"/>
+        <property name="mapperLocations" value="classpath:mapper"/>
     </bean>
+<!--    扫描接口器 -->
+    <bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+        <!--    扫描所有dao接口的实现,加入到容器中    -->
+        <property name="basePackage" value="dao"/>
+    </bean>
+    <bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+        <property name="dataSource" ref="pooledDataSource"/>
+    </bean>
+<!--  开启基于注解的事务,或者是基于xml文件的事务  -->
+    <aop:config>
+        <aop:pointcut id="pointCut" expression="execution(public * service..*(..))"/>
+        <aop:advisor advice-ref="advisor" pointcut-ref="pointCut"/>
+    </aop:config>
+<!--    配置事务增强-->
+    <tx:advice id="advisor" transaction-manager="transactionManager">
+        <tx:attributes>
+            <tx:method name="*"/>
+            <tx:method name="get*" read-only="true"/>
+        </tx:attributes>
+    </tx:advice>
 </beans>
